@@ -68,6 +68,10 @@ case "$SWITCH" in
 esac
 
 opam init -a default "https://github.com/fdopen/opam-repository-mingw.git" --comp "$SWITCH" --switch "$SWITCH"
+
+# update cached .opam
+opam update
+
 is_msvc=0
 case "$SWITCH" in
     *msvc*)
@@ -87,21 +91,14 @@ else
     opam install depext ocamlfind
 fi
 
-opam install ocp-build zarith ocplib-json-typed ocplib-endian calendar
-opam install astring base64 biniou camlp4 cmdliner cohttp cohttp-lwt cohttp-lwt-unix conduit conduit-lwt conduit-lwt-unix conf-autoconf conf-which cstruct depext easy-format ezjsonm fieldslib fmt hex ipaddr js_of_ocaml js_of_ocaml-camlp4 js_of_ocaml-compiler js_of_ocaml-lwt js_of_ocaml-ppx js_of_ocaml-toplevel js_of_ocaml-tyxml jsonm logs lwt magic-mime markup menhir ocp-indent ocp-ocamlres omd optcomp pprint ppx_cstruct ppx_fields_conv  ppx_tools ppx_tools_versioned  react reactiveData topkg tyxml uchar uutf yojson
+export OPAMYES=1
+eval $(opam config env)
 
-TMP_BUILD=$(mktemp -d 2>/dev/null || mktemp -d -t 'citmpdir')
-cd "${TMP_BUILD}"
-
-echo "downloading ocaml-ci-scripts from github.com/${fork_user}/ocaml-ci-scripts/${fork_branch}" >&2
-get ci_opam.ml
-get yorick.mli
-get yorick.ml
-
-ocamlc.opt yorick.mli
-ocamlfind ocamlc -c yorick.ml
-ocamlfind ocamlc -o ci-opam.exe -package unix -linkpkg yorick.cmo ci_opam.ml
+echo opam pin add travis-opam https://github.com/${fork_user}/ocaml-ci-scripts.git#${fork_branch}
+opam pin add travis-opam https://github.com/${fork_user}/ocaml-ci-scripts.git#${fork_branch}
 
 cd "${APPVEYOR_BUILD_FOLDER}"
 
-${TMP_BUILD}/ci-opam.exe
+# copy the binaries to allow removal of the travis-opam package
+opam config exec -- cp $(which ci-opam.exe) ci-opam.exe
+"${APPVEYOR_BUILD_FOLDER}"/ci-opam.exe
